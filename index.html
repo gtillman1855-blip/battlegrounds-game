@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chroma Battlegrounds - Complete</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Rajdhani', sans-serif; background: #0a0a0f; overflow: hidden; user-select: none; }
+        .font-orbitron { font-family: 'Orbitron', sans-serif; }
+        .arena-bg { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); position: relative; overflow: hidden; }
+        .arena-grid { position: absolute; width: 200%; height: 200%; background-image: linear-gradient(rgba(0, 255, 255, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 255, 255, 0.03) 1px, transparent 1px); background-size: 50px 50px; animation: gridMove 20s linear infinite; transform: perspective(500px) rotateX(60deg) translateY(-50%) translateZ(-200px); }
+        @keyframes gridMove { 0% { transform: perspective(500px) rotateX(60deg) translateY(0) translateZ(-200px); } 100% { transform: perspective(500px) rotateX(60deg) translateY(50px) translateZ(-200px); } }
+        
+        .fighter { position: absolute; width: 80px; height: 120px; transition: transform 0.1s; will-change: transform; z-index: 10; }
+        .fighter-body { width: 100%; height: 100%; position: relative; }
+        
+        /* Character Styles */
+        .fighter-kj .fighter-body { background: linear-gradient(180deg, #ff6b35 0%, #f7931e 50%, #ff6b35 100%); border-radius: 10px 10px 20px 20px; box-shadow: 0 0 30px rgba(255, 107, 53, 0.5); }
+        .fighter-sorcerer .fighter-body { background: linear-gradient(180deg, #7b2cbf 0%, #9d4edd 50%, #7b2cbf 100%); border-radius: 15px; box-shadow: 0 0 40px rgba(157, 78, 221, 0.6); }
+        .fighter-tsb .fighter-body { background: linear-gradient(180deg, #00f5d4 0%, #00bbf9 50%, #00f5d4 100%); border-radius: 12px; box-shadow: 0 0 35px rgba(0, 245, 212, 0.5); }
+        .fighter-garou .fighter-body { background: linear-gradient(180deg, #1a0033 0%, #000000 30%, #2d1b4e 60%, #000000 100%); border-radius: 15px; box-shadow: 0 0 60px rgba(138, 43, 226, 0.8), 0 0 100px rgba(255, 0, 255, 0.4); border: 2px solid #9400d3; position: relative; overflow: hidden; }
+        .fighter-garou .fighter-body::before { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at 30% 20%, rgba(255,0,255,0.3) 0%, transparent 50%), radial-gradient(circle at 70% 80%, rgba(0,255,255,0.2) 0%, transparent 50%); animation: cosmicPulse 3s ease-in-out infinite; }
+        @keyframes cosmicPulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+        .fighter-garou .head { position: absolute; top: -35px; left: 50%; transform: translateX(-50%); width: 50px; height: 55px; background: linear-gradient(135deg, #2d1b4e, #000000); border-radius: 50% 50% 45% 45%; box-shadow: 0 0 40px rgba(148, 0, 211, 0.9); overflow: hidden; }
+        .fighter-garou .head::after { content: ''; position: absolute; top: 15px; left: 10px; right: 10px; height: 8px; background: linear-gradient(90deg, #ff00ff, #00ffff); border-radius: 50%; filter: blur(2px); animation: eyePulse 2s ease-in-out infinite; }
+        @keyframes eyePulse { 0%, 100% { opacity: 0.7; box-shadow: 0 0 10px #ff00ff; } 50% { opacity: 1; box-shadow: 0 0 30px #00ffff, 0 0 50px #ff00ff; } }
+        
+        /* Animations */
+        @keyframes idle { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+        .idle-anim { animation: idle 1s ease-in-out infinite; }
+        @keyframes punch { 0% { transform: translateX(0) scaleX(1); } 20% { transform: translateX(-20px) scaleX(0.8); } 50% { transform: translateX(60px) scaleX(1.3); } 100% { transform: translateX(0) scaleX(1); } }
+        .punch-anim { animation: punch 0.3s ease-out; }
+        @keyframes kick { 0% { transform: rotate(0deg); } 30% { transform: rotate(-30deg) translateY(-20px); } 60% { transform: rotate(45deg) translateX(40px) translateY(-10px); } 100% { transform: rotate(0deg); } }
+        .kick-anim { animation: kick 0.4s ease-out; }
+        @keyframes ultimate { 0% { transform: scale(1); filter: brightness(1); } 50% { transform: scale(1.2); filter: brightness(2) saturate(2); } 100% { transform: scale(1); filter: brightness(1); } }
+        .ultimate-anim { animation: ultimate 0.5s ease-out; }
+        
+        /* Dash */
+        .dash-trail { position: absolute; width: 80px; height: 120px; border-radius: 10px; opacity: 0.6; pointer-events: none; animation: dashFade 0.3s ease-out forwards; }
+        @keyframes dashFade { 0% { opacity: 0.6; transform: scale(1); } 100% { opacity: 0; transform: scale(0.8); } }
+        .fighter.dashing { filter: brightness(1.5) saturate(0); z-index: 20; }
+        .portal { position: absolute; width: 100px; height: 100px; border-radius: 50%; background: conic-gradient(from 0deg, #ff00ff, #00ffff, #ff00ff); animation: portalSpin 2s linear infinite; box-shadow: 0 0 50px #ff00ff, inset 0 0 30px #000; z-index: 15; }
+        @keyframes portalSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        .portal::before { content: ''; position: absolute; inset: 10px; border-radius: 50%; background: radial-gradient(circle, #000 30%, transparent 70%); }
+        
+        /* Effects */
+        .hit-effect { position: absolute; width: 100px; height: 100px; border-radius: 50%; background: radial-gradient(circle, rgba(255,255,255,0.9) 0%, rgba(255,200,0,0.5) 40%, transparent 70%); pointer-events: none; animation: hitExpand 0.3s ease-out forwards; z-index: 20; }
+        @keyframes hitExpand { 0% { transform: scale(0); opacity: 1; } 100% { transform: scale(2); opacity: 0; } }
+        .damage-number { position: absolute; font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 24px; color: #ff3333; text-shadow: 0 0 10px rgba(255, 51, 51, 0.8); pointer-events: none; animation: damageFloat 1s ease-out forwards; z-index: 25; }
+        @keyframes damageFloat { 0% { transform: translateY(0) scale(1); opacity: 1; } 100% { transform: translateY(-50px) scale(1.5); opacity: 0; } }
+        
+        /* UI */
+        .health-bar { transition: width 0.2s ease-out; }
+        .awaken-bar { transition: width 0.3s ease-out; background: linear-gradient(90deg, #ff006e, #8338ec, #3a86ff); }
+        .move-card { transition: all 0.2s; }
+        .move-card:hover:not(.on-cooldown) { transform: translateY(-5px); box-shadow: 0 10px 30px rgba(0,255,255,0.3); }
+        .move-card.on-cooldown { opacity: 0.5; cursor: not-allowed; }
+        .move-card.dash-card { background: linear-gradient(135deg, #00ffff, #0088ff); border: 2px solid #00ffff; }
+        .dash-charges { display: flex; gap: 4px; justify-content: center; margin-top: 4px; }
+        .dash-charge { width: 8px; height: 8px; border-radius: 50%; background: #00ffff; box-shadow: 0 0 10px #00ffff; transition: all 0.2s; }
+        .dash-charge.used { background: #333; box-shadow: none; }
+        
+        /* Character Select */
+        .char-select-card { transition: all 0.3s; cursor: pointer; position: relative; overflow: hidden; }
+        .char-select-card:hover { transform: scale(1.05); box-shadow: 0 0 40px rgba(255,255,255,0.2); }
+        .char-select-card.selected { border-color: #00ff88; box-shadow: 0 0 50px rgba(0,255,136,0.4); }
+        .char-select-card.locked { opacity: 0.6; cursor: not-allowed; filter: grayscale(0.8); }
+        .cosmic-badge { position: absolute; top: 10px; right: 10px; background: linear-gradient(135deg, #9400d3, #00ffff); color: #fff; padding: 4px 12px; border-radius: 20px; font-size: 0.7rem; font-weight: bold; text-transform: uppercase; animation: cosmicBadgePulse 2s infinite; }
+        @keyframes cosmicBadgePulse { 0%, 100% { box-shadow: 0 0 10px #9400d3; } 50% { box-shadow: 0 0 30px #00ffff, 0 0 50px #9400d3; } }
+        .donator-badge { position: absolute; top: 10px; right: 10px; background: linear-gradient(135deg, #ffd700, #ff8c00); color: #000; padding: 4px 12px; border-radius: 20px; font-size: 0.7rem; font-weight: bold; text-transform: uppercase; }
+        .admin-badge { position: absolute; top: 10px; right: 10px; background: linear-gradient(135deg, #ff00ff, #8a2be2); color: #fff; padding: 4px 12px; border-radius: 20px; font-size: 0.7rem; font-weight: bold; text-transform: uppercase; animation: adminBadgePulse 2s infinite; }
+        @keyframes adminBadgePulse { 0%, 100% { box-shadow: 0 0 10px #ff00ff; } 50% { box-shadow: 0 0 30px #ff00ff, 0 0 50px #8a2be2; } }
+        
+        .awakened { animation: awakenedPulse 2s ease-in-out infinite; }
+        @keyframes awakenedPulse { 0%, 100% { filter: brightness(1) saturate(1); } 50% { filter: brightness(1.3) saturate(1.5) hue-rotate(20deg); } }
+        .awaken-aura { position: absolute; inset: -20px; border-radius: 50%; background: radial-gradient(circle, transparent 30%, currentColor 70%); opacity: 0.3; animation: auraPulse 1s ease-in-out infinite; pointer-events: none; }
+        @keyframes auraPulse { 0%, 100% { transform: scale(1); opacity: 0.3; } 50% { transform: scale(1.1); opacity: 0.5; } }
+        
+        /* Events */
+        .event-notification { position: fixed; top: 100px; left: 50%; transform: translateX(-50%) translateY(-100px); background: linear-gradient(135deg, rgba(0,0,0,0.9), rgba(20,20,40,0.95)); border: 2px solid; border-radius: 16px; padding: 16px 32px; z-index: 100; text-align: center; opacity: 0; transition: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55); box-shadow: 0 0 40px rgba(0,0,0,0.5); }
+        .event-notification.active { opacity: 1; transform: translateX(-50%) translateY(0); }
+        .event-notification.danger { border-color: #ff3333; }
+        .event-notification.bonus { border-color: #00ff88; }
+        .event-title { font-family: 'Orbitron', sans-serif; font-size: 1.5rem; font-weight: 900; margin-bottom: 4px; }
+        
+        .powerup { position: absolute; width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2rem; animation: powerupFloat 2s ease-in-out infinite, powerupPulse 1s ease-in-out infinite; cursor: pointer; z-index: 20; box-shadow: 0 0 30px currentColor; border: 3px solid white; }
+        @keyframes powerupFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+        @keyframes powerupPulse { 0%, 100% { box-shadow: 0 0 20px currentColor; transform: scale(1); } 50% { box-shadow: 0 0 40px currentColor, 0 0 60px currentColor; transform: scale(1.1); } }
+        
+        .hazard { position: absolute; z-index: 5; }
+        .laser-beam { height: 10px; background: linear-gradient(90deg, transparent, #ff0000, #ff6666, #ff0000, transparent); box-shadow: 0 0 20px #ff0000, 0 0 40px #ff0000; animation: laserPulse 0.5s ease-in-out infinite; border-radius: 5px; }
+        @keyframes laserPulse { 0%, 100% { opacity: 0.7; } 50% { opacity: 1; } }
+        
+        .active-events { position: fixed; top: 200px; right: 20px; display: flex; flex-direction: column; gap: 8px; z-index: 90; }
+        .active-event-item { background: rgba(0,0,0,0.7); border-left: 4px solid; padding: 8px 16px; border-radius: 0 8px 8px 0; font-size: 0.8rem; animation: slideIn 0.3s ease-out; }
+        .event-log { position: fixed; bottom: 140px; left: 20px; max-width: 300px; display: flex; flex-direction: column-reverse; gap: 4px; z-index: 90; pointer-events: none; }
+        .event-log-item { background: rgba(0,0,0,0.6); padding: 6px 12px; border-radius: 6px; font-size: 0.75rem; color: #aaa; animation: fadeInUp 0.3s ease-out; border-left: 3px solid #555; }
+        .event-log-item.bonus { border-left-color: #00ff88; color: #00ff88; }
+        .event-log-item.danger { border-left-color: #ff3333; color: #ff6666; }
+        
+        .garou-nuclear { width: 70px; height: 70px; background: radial-gradient(circle, #00ff00 0%, #ffff00 30%, #ff6600 60%, #ff0000 100%); box-shadow: 0 0 50px #00ff00, 0 0 80px #ffff00; animation: nuclearPulse 0.3s ease-in-out infinite; }
+        @keyframes nuclearPulse { 0%, 100% { transform: scale(1); opacity: 0.9; } 50% { transform: scale(1.1); opacity: 1; } }
+        .nuclear-explosion { position: absolute; width: 300px; height: 300px; border-radius: 50%; background: radial-gradient(circle, #ffffff 0%, #ffff00 20%, #ff8800 40%, #ff0000 60%, transparent 80%); animation: nuclearExpand 1s ease-out forwards; pointer-events: none; z-index: 25; }
+        @keyframes nuclearExpand { 0% { transform: scale(0); opacity: 1; } 100% { transform: scale(2); opacity: 0; } }
+    </style>
+</head>
+<body class="text-white">
+
+    <!-- Main Menu -->
+    <div id="mainMenu" class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-gradient-to-br from-gray-900 via-purple-900 to-black overflow-y-auto">
+        <h1 class="font-orbitron text-5xl md:text-7xl font-black mb-4 text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-purple-500 to-pink-500 animate-pulse text-center">CHROMA BATTLEGROUNDS</h1>
+        <p class="text-lg text-gray-400 mb-2 font-rajdhani text-center">Complete Edition • Cosmic Garou • Dash Combos</p>
+        <p class="text-sm text-fuchsia-400 mb-6 font-rajdhani text-center">🌌 Cosmic Garou • Supreme Power Mimicry • Portal Dash Cancels</p>
+        
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 max-w-7xl w-full px-4 mb-8">
+            <div class="char-select-card bg-gradient-to-b from-orange-900/50 to-red-900/50 border-2 border-orange-500/30 rounded-2xl p-3 text-center" onclick="selectCharacter('kj')">
+                <div class="w-20 h-20 mx-auto mb-2 rounded-full bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center text-3xl shadow-lg shadow-orange-500/50">👊</div>
+                <h3 class="font-orbitron text-sm font-bold text-orange-400 mb-1">IRON FIST KJ</h3>
+                <div class="text-xs text-orange-300">💨 Ground Dash</div>
+            </div>
+            
+            <div class="char-select-card bg-gradient-to-b from-purple-900/50 to-indigo-900/50 border-2 border-purple-500/30 rounded-2xl p-3 text-center" onclick="selectCharacter('sorcerer')">
+                <div class="w-20 h-20 mx-auto mb-2 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-3xl shadow-lg shadow-purple-500/50">🔮</div>
+                <h3 class="font-orbitron text-sm font-bold text-purple-400 mb-1">VOID SORCERER</h3>
+                <div class="text-xs text-purple-300">💨 Teleport Dash</div>
+            </div>
+            
+            <div class="char-select-card bg-gradient-to-b from-cyan-900/50 to-blue-900/50 border-2 border-cyan-500/30 rounded-2xl p-3 text-center" onclick="selectCharacter('tsb')">
+                <div class="w-20 h-20 mx-auto mb-2 rounded-full bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center text-3xl shadow-lg shadow-cyan-500/50">⚡</div>
+                <h3 class="font-orbitron text-sm font-bold text-cyan-400 mb-1">BLITZ TSB</h3>
+                <div class="text-xs text-cyan-300">💨 Multi Dash</div>
+            </div>
+            
+            <div class="char-select-card bg-gradient-to-b from-purple-900/80 via-black to-cyan-900/80 border-2 border-fuchsia-500/50 rounded-2xl p-3 text-center" onclick="selectCharacter('garou')">
+                <span class="cosmic-badge">COSMIC</span>
+                <div class="w-20 h-20 mx-auto mb-2 rounded-full bg-gradient-to-br from-fuchsia-600 via-black to-cyan-600 flex items-center justify-center text-3xl shadow-lg shadow-fuchsia-500/50 border-2 border-fuchsia-400 relative overflow-hidden">
+                    <div class="absolute inset-0 opacity-30 bg-[radial-gradient(white_1px,transparent_1px)] bg-[length:10px_10px]"></div>
+                    🌌
+                </div>
+                <h3 class="font-orbitron text-sm font-bold text-fuchsia-400 mb-1">COSMIC GAROU</h3>
+                <div class="text-xs text-fuchsia-300">💨 Portal Dash</div>
+            </div>
+            
+            <div class="char-select-card bg-gradient-to-b from-yellow-900/50 to-orange-900/50 border-2 border-yellow-500/50 rounded-2xl p-3 text-center locked" onclick="selectCharacter('dragon')" id="dragonCard">
+                <span class="donator-badge">Donator</span>
+                <div class="w-20 h-20 mx-auto mb-2 rounded-full bg-gradient-to-br from-yellow-400 to-orange-600 flex items-center justify-center text-3xl shadow-lg shadow-yellow-500/50">🐉</div>
+                <h3 class="font-orbitron text-sm font-bold text-yellow-400 mb-1">GOLD DRAGON</h3>
+            </div>
+            
+            <div class="char-select-card bg-gradient-to-b from-purple-900/80 to-black border-2 border-fuchsia-500/50 rounded-2xl p-3 text-center locked" onclick="selectCharacter('admin')" id="adminCard">
+                <span class="admin-badge">Admin</span>
+                <div class="w-20 h-20 mx-auto mb-2 rounded-full bg-gradient-to-br from-fuchsia-600 to-black flex items-center justify-center text-3xl shadow-lg shadow-fuchsia-500/50 border-2 border-fuchsia-400">👁️</div>
+                <h3 class="font-orbitron text-sm font-bold text-fuchsia-400 mb-1">VOID WALKER</h3>
+            </div>
+        </div>
+        
+        <div class="flex gap-4 mb-6">
+            <button onclick="unlockDonator()" class="px-6 py-2 bg-gradient-to-r from-yellow-600 to-orange-600 rounded-full font-bold text-sm hover:scale-105 transition-transform">💎 Unlock Donator ($5)</button>
+            <button onclick="unlockAdmin()" class="px-6 py-2 bg-gradient-to-r from-fuchsia-600 to-purple-600 rounded-full font-bold text-sm hover:scale-105 transition-transform">🔑 Admin Access</button>
+        </div>
+        
+        <button id="startBtn" class="px-12 py-4 bg-gradient-to-r from-cyan-500 to-blue-600 rounded-full font-orbitron font-bold text-xl hover:scale-110 transition-transform disabled:opacity-50 disabled:cursor-not-allowed" disabled onclick="startGame()">ENTER ARENA</button>
+        
+        <p class="mt-4 text-xs text-gray-500">Press 1-6 to quick-select • Space to confirm</p>
+        <p class="mt-2 text-xs text-fuchsia-400">SHIFT: Dash • SHIFT during hitstop: Combo Dash Cancel</p>
+    </div>
+
+    <!-- Event Notification -->
+    <div id="eventNotification" class="event-notification">
+        <div class="event-title" id="eventTitle">EVENT NAME</div>
+        <div class="event-subtitle" id="eventSubtitle">Event description goes here</div>
+    </div>
+
+    <!-- Event Timer -->
+    <div class="event-timer fixed top-120 right-5 bg-black/80 border-2 border-gray-700 rounded-xl p-3 z-90 hidden" id="eventTimer">
+        <div class="text-xs text-gray-400 uppercase mb-1">Next Event</div>
+        <div class="w-36 h-1.5 bg-gray-700 rounded overflow-hidden"><div id="eventTimerFill" class="h-full bg-gradient-to-r from-red-500 to-yellow-500 w-full"></div></div>
+    </div>
+
+    <!-- Active Events -->
+    <div class="active-events" id="activeEvents"></div>
+    <div class="event-log" id="eventLog"></div>
+
+    <!-- Game UI -->
+    <div id="gameUI" class="hidden fixed inset-0 z-40 pointer-events-none">
+        <div class="absolute top-8 left-8 right-8 flex justify-between items-start">
+            <!-- Player 1 -->
+            <div class="w-80">
+                <div class="flex items-center gap-4 mb-2">
+                    <div id="p1Icon" class="w-16 h-16 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-2xl font-bold border-4 border-white/20 relative">
+                        P1
+                        <div id="p1AwakenAura" class="awaken-aura text-cyan-400 hidden"></div>
+                    </div>
+                    <div>
+                        <div id="p1Name" class="font-orbitron font-bold text-xl text-cyan-400">BLITZ TSB</div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs text-gray-400">AWAKENING:</span>
+                            <div class="w-24 h-2 bg-gray-800 rounded-full overflow-hidden"><div id="p1AwakenBar" class="awaken-bar h-full w-0"></div></div>
+                            <span id="p1AwakenText" class="text-xs font-bold text-pink-400 hidden">(AWK)</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="h-6 bg-gray-800 rounded-full overflow-hidden border-2 border-gray-700 relative">
+                    <div id="p1Health" class="health-bar h-full bg-gradient-to-r from-cyan-500 to-blue-600 w-full"></div>
+                    <div class="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent"></div>
+                </div>
+                <div id="p1Status" class="flex gap-1 mt-2"></div>
+                <div class="flex items-center gap-2 mt-2">
+                    <span class="text-xs text-cyan-400">DASH:</span>
+                    <div class="dash-charges" id="p1DashCharges">
+                        <div class="dash-charge"></div><div class="dash-charge"></div><div class="dash-charge"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Timer -->
+            <div class="text-center">
+                <div id="timer" class="font-orbitron text-5xl font-black text-white drop-shadow-lg">99</div>
+                <div class="text-xs text-gray-400 mt-1">ROUND 1</div>
+            </div>
+            
+            <!-- Player 2 -->
+            <div class="w-80">
+                <div class="flex items-center gap-4 mb-2 flex-row-reverse text-right">
+                    <div id="p2Icon" class="w-16 h-16 rounded-full bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center text-2xl font-bold border-4 border-white/20 relative">
+                        P2
+                        <div id="p2AwakenAura" class="awaken-aura text-orange-400 hidden"></div>
+                    </div>
+                    <div>
+                        <div id="p2Name" class="font-orbitron font-bold text-xl text-orange-400">IRON FIST KJ</div>
+                        <div class="flex items-center gap-2 flex-row-reverse">
+                            <span class="text-xs text-gray-400">AWAKENING:</span>
+                            <div class="w-24 h-2 bg-gray-800 rounded-full overflow-hidden"><div id="p2AwakenBar" class="awaken-bar h-full w-0" style="margin-left: auto;"></div></div>
+                            <span id="p2AwakenText" class="text-xs font-bold text-pink-400 hidden">(AWK)</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="h-6 bg-gray-800 rounded-full overflow-hidden border-2 border-gray-700 relative">
+                    <div id="p2Health" class="health-bar h-full bg-gradient-to-r from-orange-500 to-red-600 w-full" style="margin-left: auto;"></div>
+                    <div class="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent"></div>
+                </div>
+                <div id="p2Status" class="flex gap-1 mt-2 flex-row-reverse"></div>
+            </div>
+        </div>
+        
+        <!-- Combo Display -->
+        <div id="comboDisplay" class="absolute top-32 left-1/2 transform -translate-x-1/2 text-center hidden">
+            <div id="comboCount" class="combo-text text-6xl font-black">0</div>
+            <div class="text-yellow-400 font-bold tracking-widest">HIT COMBO</div>
+            <div id="comboDamage" class="text-sm text-gray-400 mt-1">0 damage</div>
+        </div>
+        
+        <!-- Combo Dash Prompt -->
+        <div id="comboDashPrompt" class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 hidden">
+            <div class="bg-fuchsia-900/80 border-2 border-fuchsia-400 rounded-xl px-6 py-3 text-center animate-pulse">
+                <div class="text-fuchsia-400 font-orbitron font-bold text-xl">SHIFT TO DASH CANCEL!</div>
+                <div class="text-xs text-gray-300 mt-1">Extend your combo!</div>
+            </div>
+        </div>
+        
+        <!-- Downslam Prompt -->
+        <div id="downslamPrompt" class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 hidden">
+            <div class="bg-black/80 border-2 border-yellow-400 rounded-xl px-6 py-3 text-center animate-pulse">
+                <div class="text-yellow-400 font-orbitron font-bold text-xl">PRESS ↓ + HEAVY</div>
+                <div class="text-xs text-gray-300 mt-1">For Downslam Combo!</div>
+            </div>
+        </div>
+        
+        <!-- Controls -->
+        <div class="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-center text-gray-500 text-xs bg-black/50 px-4 py-2 rounded-full">
+            WASD: Move • J: Light • K: Heavy • L: Special • I: Ultimate • Space: Block • Shift: Dash • Shift(hitstop): Combo Dash
+        </div>
+    </div>
+
+    <!-- Arena -->
+    <div id="arena" class="hidden fixed inset-0 arena-bg">
+        <div class="arena-grid"></div>
+        <div id="gameContainer" class="absolute inset-0 overflow-hidden"></div>
+    </div>
+
+    <!-- Controls Bar -->
+    <div id="controls" class="hidden fixed bottom-24 left-1/2 transform -translate-x-1/2 flex gap-2 pointer-events-auto flex-wrap justify-center max-w-3xl"></div>
+
+    <!-- Victory Screen -->
+    <div id="victoryScreen" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm">
+        <div class="text-center">
+            <h2 id="winnerText" class="font-orbitron text-6xl font-black mb-4 text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-500">PLAYER 1 WINS!</h2>
+            <div id="victoryStats" class="text-gray-400 mb-8 space-y-2">
+                <div>Max Combo: <span id="maxCombo" class="text-white">0</span></div>
+                <div>Total Damage: <span id="totalDamage" class="text-white">0</span></div>
+                <div>Awakened Time: <span id="awakenTime" class="text-white">0s</span></div>
+                <div>Events Survived: <span id="eventsSurvived" class="text-white">0</span></div>
+                <div>Dash Cancels: <span id="dashCancels" class="text-white">0</span></div>
+            </div>
+            <button onclick="location.reload()" class="px-8 py-4 bg-gradient-to-r from-cyan-500 to-blue-600 rounded-full font-orbitron font-bold text-xl hover:scale-110 transition-transform">PLAY AGAIN</button>
+        </div>
+    </div>
+
+    <script>
+        // Game State
+        const game = {
+            selectedChar: null,
+            isPlaying: false,
+            time: 99,
+            gravity: 0.8,
+            groundY: window.innerHeight - 200,
+            unlocks: { donator: false, admin: false },
+            stats: { maxCombo: 0, totalDamage: 0, awakenTime: 0, eventsSurvived: 0, dashCancels: 0 }
+        };
+
+        // Character Data - COMPLETE
+        const characters = {
+            kj: {
+                name: "IRON FIST KJ",
+                color: "orange",
+                tier: "free",
+                health: 1200,
+                speed: 5,
+                jump: 15,
+                dashSpeed: 20,
+                dashDuration: 12,
+                dashCooldown: 60,
+                dashInvincibility: 8,
+                awakenThreshold: 60,
+                moves: {
+                    light: { name: "Rapid Jab", damage: 40, cooldown: 0.3, range: 80, knockback: 10, startup: 2, active: 3, recovery: 5, type: "melee", combo: true, desc: "Fast 3-hit combo" },
+                    heavy: { name: "Heavy Smash", damage: 120, cooldown: 1.2, range: 100, knockback: 50, startup: 8, active: 4, recovery: 12, type: "melee", armor: true, desc: "Armored punch with launch" },
+                    downslam: { name: "Earth Shaker", damage: 150, cooldown: 2, range: 120, knockback: 80, startup: 5, active: 6, recovery: 15, type: "downslam", groundBounce: true, desc: "Slams enemy into ground" },
+                    special: { name: "Burning Uppercut", damage: 150, cooldown: 3, range: 120, knockback: 80, startup: 5, active: 6, recovery: 15, type: "uppercut", invincible: true, desc: "Invincible reversal" },
+                    ultimate: { name: "EARTH SHATTER", damage: 400, cooldown: 10, range: 200, knockback: 100, startup: 20, active: 30, recovery: 40, type: "aoe", cinematic: true, desc: "Massive ground pound" }
+                },
+                awakened: { name: "INFERNO KJ", damageMult: 1.5, speedMult: 1.3, newMoves: { light: { name: "Inferno Jab", damage: 60, burn: true }, heavy: { name: "Magma Fist", damage: 180, armor: true, burn: true }, special: { name: "Volcanic Upper", damage: 220, invincible: true }, ultimate: { name: "METEOR FIST", damage: 600, type: "projectile", desc: "Giant fireball from sky" } }, aura: "orange" }
+            },
+            sorcerer: {
+                name: "VOID SORCERER",
+                color: "purple",
+                tier: "free",
+                health: 1000,
+                speed: 4,
+                jump: 12,
+                dashSpeed: 25,
+                dashDuration: 8,
+                dashCooldown: 45,
+                dashInvincibility: 10,
+                awakenThreshold: 50,
+                moves: {
+                    light: { name: "Void Shard", damage: 60, cooldown: 0.4, range: 250, knockback: 20, startup: 4, active: 20, recovery: 8, type: "projectile", desc: "Fast magic projectile" },
+                    heavy: { name: "Gravity Pull", damage: 100, cooldown: 1.5, range: 150, knockback: -30, startup: 10, active: 20, recovery: 15, type: "grab", stun: 30, desc: "Pulls enemy then slams" },
+                    downslam: { name: "Void Crash", damage: 130, cooldown: 2, range: 140, knockback: 60, startup: 6, active: 8, recovery: 12, type: "downslam", groundBounce: true, desc: "Magical slam with void explosion" },
+                    special: { name: "Time Stop", damage: 0, cooldown: 5, range: 300, startup: 5, active: 120, recovery: 30, type: "debuff", freeze: true, desc: "Freezes time for 2 seconds" },
+                    ultimate: { name: "REALITY TEAR", damage: 350, cooldown: 10, range: 400, knockback: 150, startup: 30, active: 60, recovery: 50, type: "beam", fullscreen: true, desc: "Giant laser beam" }
+                },
+                awakened: { name: "ARCHMAGE", damageMult: 1.4, speedMult: 1.2, newMoves: { light: { name: "Arcane Missile", damage: 90, homing: true }, special: { name: "Chrono Lock", freeze: 180, desc: "3 second time stop" }, ultimate: { name: "REALITY COLLAPSE", damage: 500, type: "blackhole", desc: "Sucks everything in" } }, aura: "purple" }
+            },
+            tsb: {
+                name: "BLITZ TSB",
+                color: "cyan",
+                tier: "free",
+                health: 900,
+                speed: 8,
+                jump: 18,
+                dashSpeed: 30,
+                dashDuration: 6,
+                dashCooldown: 30,
+                dashInvincibility: 6,
+                awakenThreshold: 55,
+                moves: {
+                    light: { name: "Sonic Strike", damage: 35, cooldown: 0.2, range: 90, knockback: 5, startup: 1, active: 2, recovery: 3, type: "melee", teleport: true, desc: "Teleports behind enemy" },
+                    heavy: { name: "Flash Kick", damage: 90, cooldown: 0.8, range: 110, knockback: 40, startup: 3, active: 5, recovery: 10, type: "launcher", airOk: true, desc: "Lightning fast launcher" },
+                    downslam: { name: "Thunder Drop", damage: 110, cooldown: 1.5, range: 100, knockback: 70, startup: 4, active: 5, recovery: 12, type: "downslam", groundBounce: true, desc: "Lightning-fast aerial slam" },
+                    special: { name: "Afterimage", damage: 120, cooldown: 2.5, range: 200, knockback: 60, startup: 0, active: 10, recovery: 20, type: "counter", invincible: true, desc: "Counter attack with clones" },
+                    ultimate: { name: "THOUSAND CUTS", damage: 450, cooldown: 10, range: 300, knockback: 200, startup: 10, active: 90, recovery: 30, type: "rush", cinematic: true, desc: "Rapid teleport combo" }
+                },
+                awakened: { name: "GOD SPEED", damageMult: 1.3, speedMult: 1.5, newMoves: { light: { name: "Phantom Strike", damage: 50, teleport: true, multiHit: true }, heavy: { name: "Rising Phoenix", damage: 140, launcher: true }, ultimate: { name: "INFINITE BLADE", damage: 700, type: "timestop_combo", desc: "Time stop + 100 hits" } }, aura: "cyan" }
+            },
+            garou: {
+                name: "COSMIC GAROU",
+                color: "fuchsia",
+                tier: "cosmic",
+                health: 1100,
+                speed: 6,
+                jump: 16,
+                dashSpeed: 35,
+                dashDuration: 10,
+                dashCooldown: 25,
+                dashInvincibility: 10,
+                awakenThreshold: 50,
+                canDashCancel: true,
+                moves: {
+                    light: { name: "Cosmic Strike", damage: 50, cooldown: 0.25, range: 95, knockback: 15, startup: 2, active: 3, recovery: 4, type: "melee", combo: true, mimicry: true, desc: "Adapts to opponent's style" },
+                    heavy: { name: "Nuclear Fission", damage: 140, cooldown: 1, range: 130, knockback: 60, startup: 6, active: 8, recovery: 12, type: "melee", nuclear: true, radiation: true, desc: "Radioactive explosion punch" },
+                    downslam: { name: "Gravity Slam", damage: 160, cooldown: 1.8, range: 125, knockback: 70, startup: 5, active: 7, recovery: 14, type: "downslam", groundBounce: true, gravityPull: true, desc: "Slams with gravitational force" },
+                    special: { name: "Portal Strike", damage: 120, cooldown: 2, range: 300, knockback: 40, startup: 3, active: 15, recovery: 10, type: "teleport", portal: true, desc: "Opens portal and strikes from behind" },
+                    ultimate: { name: "COSMIC FEAR", damage: 500, cooldown: 9, range: 350, knockback: 120, startup: 25, active: 80, recovery: 35, type: "cosmic", cinematic: true, nuclear: true, gravity: true, desc: "Ultimate cosmic energy explosion" }
+                },
+                awakened: { name: "AWAKENED GAROU", damageMult: 1.6, speedMult: 1.4, dashCooldown: 15, newMoves: { light: { name: "Perfect Mimicry", damage: 70, mimicry: true, copyLastAttack: true, desc: "Perfectly copies opponent's last attack" }, heavy: { name: "Gamma Ray Burst", damage: 200, nuclear: true, radiation: true, aoe: true, desc: "Massive nuclear explosion" }, special: { name: "Portal Storm", damage: 180, portal: true, multiHit: true, desc: "Multiple portal strikes" }, ultimate: { name: "BIG BANG", damage: 800, type: "cosmic_nuke", desc: "Creates a new universe... of pain" } }, aura: "fuchsia" }
+            },
+            dragon: {
+                name: "GOLD DRAGON",
+                color: "yellow",
+                tier: "donator",
+                health: 1400,
+                speed: 6,
+                jump: 14,
+                dashSpeed: 18,
+                dashDuration: 15,
+                dashCooldown: 75,
+                dashInvincibility: 8,
+                awakenThreshold: 70,
+                moves: {
+                    light: { name: "Dragon Claw", damage: 70, cooldown: 0.35, range: 100, knockback: 15, startup: 3, active: 4, recovery: 6, type: "melee", combo: true, bleed: true, desc: "Sharp claws that bleed" },
+                    heavy: { name: "Tail Whip", damage: 140, cooldown: 1, range: 130, knockback: 60, startup: 6, active: 8, recovery: 10, type: "melee", sweep: true, desc: "Wide range tail attack" },
+                    downslam: { name: "Dragon Dive", damage: 200, cooldown: 2.5, range: 150, knockback: 100, startup: 8, active: 10, recovery: 20, type: "downslam", groundBounce: true, fire: true, desc: "Dive from sky with fire explosion" },
+                    special: { name: "Royal Guard", damage: 0, cooldown: 4, range: 0, startup: 0, active: 60, recovery: 30, type: "buff", armor: true, heal: 50, desc: "Golden armor + heal" },
+                    ultimate: { name: "DRAGON'S WRATH", damage: 500, cooldown: 12, range: 350, knockback: 150, startup: 40, active: 80, recovery: 40, type: "transformation", dragonForm: true, desc: "Transform into true dragon form" }
+                },
+                awakened: { name: "ANCIENT DRAGON", damageMult: 1.6, speedMult: 1.2, healthBonus: 200, newMoves: { light: { name: "Dragon Swipe", damage: 100, bleed: true, lifeSteal: 0.1 }, special: { name: "Dragon Scales", damage: 0, reflect: true, armor: true }, ultimate: { name: "APOCALYPSE", damage: 800, type: "nuke", desc: "Destroy entire arena" } }, aura: "gold" }
+            },
+            admin: {
+                name: "VOID WALKER",
+                color: "fuchsia",
+                tier: "admin",
+                health: 9999,
+                speed: 10,
+                jump: 20,
+                dashSpeed: 50,
+                dashDuration: 5,
+                dashCooldown: 10,
+                dashInvincibility: 15,
+                awakenThreshold: 30,
+                moves: {
+                    light: { name: "Delete", damage: 999, cooldown: 0.1, range: 200, knockback: 500, startup: 0, active: 1, recovery: 1, type: "melee", instant: true, desc: "One-shot deletion" },
+                    heavy: { name: "Ban Hammer", damage: 500, cooldown: 0.5, range: 300, knockback: 1000, startup: 5, active: 10, recovery: 5, type: "aoe", stun: 120, desc: "Banish to void" },
+                    downslam: { name: "Server Crash", damage: 2000, cooldown: 1, range: 400, knockback: 0, startup: 10, active: 30, recovery: 20, type: "downslam", groundBounce: true, screenShake: true, desc: "Crash the server" },
+                    special: { name: "Reality Warp", damage: 0, cooldown: 2, range: 500, startup: 0, active: 1, recovery: 10, type: "debuff", teleportEnemy: true, heal: 999, desc: "Teleport enemy + full heal" },
+                    ultimate: { name: "GAME OVER", damage: 9999, cooldown: 5, range: 9999, knockback: 9999, startup: 60, active: 120, recovery: 0, type: "world", cinematic: true, instakill: true, desc: "Ends the game instantly" }
+                },
+                awakened: { name: "CREATOR MODE", damageMult: 9.99, speedMult: 2, newMoves: { light: { name: "/kill", damage: 9999, aoe: true }, ultimate: { name: "SERVER SHUTDOWN", damage: 99999, type: "nuke", desc: "Ends existence" } }, aura: "fuchsia" }
+            }
+        };
+
+        // Event System
+        const eventSystem = {
+            activeEvents: [],
+            eventTimer: 0,
+            nextEventTime: 300,
+            
+            events: [
+                { id: 'health_orb', name: 'Health Orb', subtitle: 'Restore 30% HP', type: 'bonus', duration: 300, spawn: () => spawnPowerup('health') },
+                { id: 'speed_boost', name: 'Speed Surge', subtitle: '2x Speed for 10s', type: 'bonus', duration: 600, spawn: () => spawnPowerup('speed') },
+                { id: 'laser_sweep', name: 'LASER SWEEP', subtitle: 'Avoid the beam!', type: 'danger', duration: 360, spawn: () => spawnLaserBeam() },
+                { id: 'meteor_shower', name: 'METEOR SHOWER', subtitle: 'Meteors incoming!', type: 'danger', duration: 420, spawn: () => spawnMeteorShower() }
+            ],
+            
+            update() {
+                this.eventTimer++;
+                const timerPct = 100 - (this.eventTimer / this.nextEventTime * 100);
+                document.getElementById('eventTimerFill').style.width = Math.max(0, timerPct) + '%';
+                
+                if (this.eventTimer >= this.nextEventTime) {
+                    this.triggerRandomEvent();
+                    this.eventTimer = 0;
+                    this.nextEventTime = 180 + Math.random() * 420;
+                }
+                
+                this.activeEvents = this.activeEvents.filter(event => {
+                    event.duration--;
+                    if (event.element) event.element.textContent = `${event.name}: ${Math.ceil(event.duration / 60)}s`;
+                    if (event.duration <= 0) {
+                        if (event.cleanup) event.cleanup();
+                        if (event.element) event.element.remove();
+                        return false;
+                    }
+                    if (event.update) event.update();
+                    return true;
+                });
+                
+                this.updateActiveEventsDisplay();
+            },
+            
+            triggerRandomEvent() {
+                const available = this.events.filter(e => !this.activeEvents.some(a => a.id === e.id));
+                if (available.length === 0) return;
+                const event = available[Math.floor(Math.random() * available.length)];
+                
+                const notif = document.getElementById('eventNotification');
+                document.getElementById('eventTitle').textContent = event.name;
+                document.getElementById('eventSubtitle').textContent = event.subtitle;
+                notif.className = `event-notification ${event.type} active`;
+                setTimeout(() => notif.classList.remove('active'), 3000);
+                
+                this.activeEvents.push({ ...event, cleanup: event.spawn() });
+                game.stats.eventsSurvived++;
+                addEventLog(`${event.name} started!`, event.type);
+            },
+            
+            updateActiveEventsDisplay() {
+                const container = document.getElementById('activeEvents');
+                container.innerHTML = '';
+                this.activeEvents.forEach(event => {
+                    const div = document.createElement('div');
+                    div.className = `active-event-item ${event.type}`;
+                    div.textContent = `${event.name}: ${Math.ceil(event.duration / 60)}s`;
+                    container.appendChild(div);
+                });
+            }
+        };
+
+        let player1, player2;
+        let keys = {};
+
+        function unlockDonator() {
+            game.unlocks.donator = true;
+            document.getElementById('dragonCard').classList.remove('locked');
+            alert('💎 Donator Character Unlocked: Gold Dragon!');
+        }
+
+        function unlockAdmin() {
+            const code = prompt("Enter admin access code:");
+            if (code === "admin1337") {
+                game.unlocks.admin = true;
+                document.getElementById('adminCard').classList.remove('locked');
+                alert('🔑 Admin Character Unlocked: Void Walker!');
+            } else {
+                alert('Invalid code!');
+            }
+        }
+
+        window.addEventListener('keydown', (e) => {
+            keys[e.key.toLowerCase()] = true;
+            if (!game.isPlaying) {
+                if (e.key === '1') selectCharacter('kj');
+                if (e.key === '2') selectCharacter('sorcerer');
+                if (e.key === '3') selectCharacter('tsb');
+                if (e.key === '4') selectCharacter('garou');
+                if (e.key === '5' && game.unlocks.donator) selectCharacter('dragon');
+                if (e.key === '6' && game.unlocks.admin) selectCharacter('admin');
+                if (e.key === ' ') startGame();
+            } else {
+                handleInput(e.key.toLowerCase(), player1);
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            keys[e.key.toLowerCase()] = false;
+            if (e.key === ' ' && player1) player1.block(false);
+        });
+
+        function selectCharacter(char) {
+            const charData = characters[char];
+            if (charData.tier === 'donator' && !game.unlocks.donator) return;
+            if (charData.tier === 'admin' && !game.unlocks.admin) return;
+            
+            game.selectedChar = char;
+            document.querySelectorAll('.char-select-card').forEach(c => c.classList.remove('selected'));
+            event.currentTarget.classList.add('selected');
+            document.getElementById('startBtn').disabled = false;
+        }
+
+        function startGame() {
+            document.getElementById('mainMenu').classList.add('hidden');
+            document.getElementById('gameUI').classList.remove('hidden');
+            document.getElementById('arena').classList.remove('hidden');
+            document.getElementById('controls').classList.remove('hidden');
+            document.getElementById('eventTimer').classList.remove('hidden');
+            
+            game.isPlaying = true;
+            game.groundY = window.innerHeight - 150;
+            
+            const availableChars = Object.keys(characters).filter(k => {
+                if (characters[k].tier === 'donator' && !game.unlocks.donator) return false;
+                if (characters[k].tier === 'admin' && !game.unlocks.admin) return false;
+                return k !== game.selectedChar;
+            });
+            const opponentChar = availableChars[Math.floor(Math.random() * availableChars.length)] || 'kj';
+            
+            player1 = new Fighter(game.selectedChar, 200, game.groundY, true);
+            player2 = new Fighter(opponentChar, window.innerWidth - 200, game.groundY, false);
+            
+            updateCharacterUI(player1, 'p1');
+            updateCharacterUI(player2, 'p2');
+            
+            createControlsUI();
+            requestAnimationFrame(gameLoop);
+            startTimer();
+        }
+
+        function updateCharacterUI(fighter, prefix) {
+            const charData = characters[fighter.type];
+            const nameEl = document.getElementById(`${prefix}Name`);
+            nameEl.textContent = charData.name;
+            nameEl.className = `font-orbitron font-bold text-xl text-${charData.color}-400`;
+        }
+
+        class Fighter {
+            constructor(type, x, y, isPlayer) {
+                this.type = type;
+                this.x = x;
+                this.y = y;
+                this.vx = 0;
+                this.vy = 0;
+                this.width = 80;
+                this.height = 120;
+                this.facing = isPlayer ? 1 : -1;
+                this.isPlayer = isPlayer;
+                this.isGrounded = true;
+                this.isAirborne = false;
+                this.isAttacking = false;
+                this.isBlocking = false;
+                this.isDashing = false;
+                this.isHit = false;
+                this.health = characters[type].health;
+                this.maxHealth = characters[type].health;
+                this.awakenMeter = 0;
+                this.isAwakened = false;
+                this.combo = 0;
+                this.comboTimer = 0;
+                this.cooldowns = {};
+                this.hitstun = 0;
+                this.invincible = 0;
+                this.armor = 0;
+                
+                // Dash system
+                this.dashTimer = 0;
+                this.dashCooldownTimer = 0;
+                this.dashCharges = 3;
+                this.dashRechargeTimer = 0;
+                
+                // Combo system
+                this.canDashCancel = false;
+                this.hitstopFrames = 0;
+                this.canDownslam = false;
+                
+                // Status
+                this.speedBoost = 0;
+                this.damageBoost = 0;
+                
+                this.element = this.createElement();
+                document.getElementById('gameContainer').appendChild(this.element);
+            }
+
+            createElement() {
+                const div = document.createElement('div');
+                div.className = `fighter fighter-${this.type} ${this.isPlayer ? '' : 'transform scale-x-[-1]'}`;
+                div.style.left = this.x + 'px';
+                div.style.top = this.y + 'px';
+                
+                let extraHTML = '';
+                if (this.type === 'garou') {
+                    extraHTML = `<div class="horns"><div class="horn horn-main"></div><div class="horn horn-left"></div><div class="horn horn-right"></div></div>`;
+                }
+                
+                div.innerHTML = `<div class="fighter-body idle-anim"><div class="head">${extraHTML}</div></div><div class="fighter-effects absolute inset-0 pointer-events-none"></div>`;
+                return div;
+            }
+
+            update() {
+                const charData = characters[this.type];
+                
+                // Hitstop freeze
+                if (this.hitstopFrames > 0) {
+                    this.hitstopFrames--;
+                    if (this.isPlayer && this.canDashCancel && keys['shift'] && this.dashCharges > 0) {
+                        this.performDashCancel();
+                    }
+                    return;
+                }
+                
+                // Physics
+                if (this.hitstun > 0) {
+                    this.hitstun--;
+                    this.vx *= 0.9;
+                    this.checkDownslamOpportunity();
+                } else {
+                    if (!this.isAttacking && !this.isDashing) {
+                        if (this.isPlayer) {
+                            const speed = charData.speed * (this.isAwakened ? charData.awakened.speedMult : 1) * (this.speedBoost > 0 ? 2 : 1);
+                            if (keys['a'] || keys['arrowleft']) this.vx = -speed;
+                            else if (keys['d'] || keys['arrowright']) this.vx = speed;
+                            else this.vx *= 0.8;
+                            
+                            if ((keys['w'] || keys['arrowup']) && this.isGrounded) {
+                                this.vy = -charData.jump;
+                                this.isGrounded = false;
+                                this.isAirborne = true;
+                            }
+                            
+                            if (keys['shift'] && this.dashCharges > 0 && this.dashCooldownTimer === 0) {
+                                this.performDash();
+                            }
+                            
+                            if ((keys['s'] || keys['arrowdown']) && (keys['k'] || keys['x']) && this.canDownslam) {
+                                this.attack('downslam');
+                                this.canDownslam = false;
+                                document.getElementById('downslamPrompt').classList.add('hidden');
+                            }
+                        } else {
+                            this.updateAI();
+                        }
+                    }
+                }
+                
+                // Dash handling
+                if (this.isDashing) {
+                    this.vx = this.facing * charData.dashSpeed * (this.isAwakened ? charData.awakened.speedMult || 1 : 1);
+                    this.dashTimer--;
+                    if (this.dashTimer % 3 === 0) this.createDashTrail();
+                    if (this.dashTimer <= 0) this.endDash();
+                }
+                
+                // Apply velocity
+                this.x += this.vx;
+                this.y += this.vy;
+                this.vy += game.gravity;
+                
+                // Ground collision
+                if (this.y >= game.groundY) {
+                    this.y = game.groundY;
+                    this.vy = 0;
+                    this.isGrounded = true;
+                    this.isAirborne = false;
+                }
+                
+                this.x = Math.max(50, Math.min(window.innerWidth - 150, this.x));
+                
+                // Facing
+                const target = this.isPlayer ? player2 : player1;
+                if (!this.isAttacking && !this.isDashing && this.hitstun === 0) {
+                    this.facing = target.x > this.x ? 1 : -1;
+                }
+                
+                // Combo decay
+                if (this.combo > 0) {
+                    this.comboTimer--;
+                    if (this.comboTimer <= 0) {
+                        if (this.isPlayer && this.combo > game.stats.maxCombo) game.stats.maxCombo = this.combo;
+                        this.combo = 0;
+                        document.getElementById('comboDisplay').classList.add('hidden');
+                    }
+                }
+                
+                // Timers
+                if (this.invincible > 0) this.invincible--;
+                if (this.armor > 0) this.armor--;
+                if (this.speedBoost > 0) this.speedBoost--;
+                if (this.dashCooldownTimer > 0) this.dashCooldownTimer--;
+                
+                // Dash recharge
+                if (this.dashCharges < 3) {
+                    this.dashRechargeTimer++;
+                    const rechargeTime = this.isAwakened && charData.awakened.dashCooldown ? charData.awakened.dashCooldown : charData.dashCooldown;
+                    if (this.dashRechargeTimer >= rechargeTime) {
+                        this.dashCharges++;
+                        this.dashRechargeTimer = 0;
+                        if (this.isPlayer) this.updateDashUI();
+                    }
+                }
+                
+                // Move cooldowns
+                for (let move in this.cooldowns) {
+                    if (this.cooldowns[move] > 0) this.cooldowns[move] -= 0.016;
+                }
+                
+                // Awakening
+                if (!this.isAwakened && this.awakenMeter >= charData.awakenThreshold) this.awaken();
+                
+                // Visual update
+                this.element.style.left = this.x + 'px';
+                this.element.style.top = this.y + 'px';
+                this.element.style.transform = `scaleX(${this.facing * (this.isPlayer ? 1 : -1)})`;
+                
+                // UI update
+                const healthPct = (this.health / this.maxHealth) * 100;
+                document.getElementById(this.isPlayer ? 'p1Health' : 'p2Health').style.width = healthPct + '%';
+                const awakenPct = Math.min(100, (this.awakenMeter / charData.awakenThreshold) * 100);
+                document.getElementById(this.isPlayer ? 'p1AwakenBar' : 'p2AwakenBar').style.width = awakenPct + '%';
+            }
+
+            performDash() {
+                if (this.isDashing || this.dashCharges <= 0) return;
+                const charData = characters[this.type];
+                
+                this.isDashing = true;
+                this.dashTimer = charData.dashDuration;
+                this.dashCharges--;
+                this.dashRechargeTimer = 0;
+                this.invincible = charData.dashInvincibility;
+                this.element.classList.add('dashing');
+                
+                createParticle(this.x + this.width/2, this.y + this.height/2, 'dash', 10);
+                
+                if (this.type === 'garou') {
+                    const portal = document.createElement('div');
+                    portal.className = 'portal';
+                    portal.style.left = (this.x + this.width/2 - 50) + 'px';
+                    portal.style.top = (this.y + this.height/2 - 50) + 'px';
+                    document.getElementById('gameContainer').appendChild(portal);
+                    setTimeout(() => portal.remove(), 500);
+                }
+                
+                if (this.isPlayer) {
+                    this.updateDashUI();
+                    if (this.canDashCancel) {
+                        document.getElementById('comboDashPrompt').classList.remove('hidden');
+                        setTimeout(() => document.getElementById('comboDashPrompt').classList.add('hidden'), 1000);
+                    }
+                }
+            }
+
+            performDashCancel() {
+                this.isAttacking = false;
+                this.hitstopFrames = 0;
+                this.canDashCancel = false;
+                const body = this.element.querySelector('.fighter-body');
+                body.classList.remove('punch-anim', 'kick-anim', 'ultimate-anim');
+                body.classList.add('idle-anim');
+                this.performDash();
+                this.comboTimer = 60;
+                if (this.isPlayer) {
+                    game.stats.dashCancels++;
+                    showFloatingText(this.x, this.y - 50, 'DASH CANCEL!', '#ff00ff');
+                }
+                document.getElementById('comboDashPrompt').classList.add('hidden');
+            }
+
+            endDash() {
+                this.isDashing = false;
+                this.element.classList.remove('dashing');
+                this.dashCooldownTimer = 10;
+                this.vx = this.facing * characters[this.type].speed * 0.5;
+            }
+
+            createDashTrail() {
+                const trail = document.createElement('div');
+                trail.className = 'dash-trail';
+                trail.style.left = this.x + 'px';
+                trail.style.top = this.y + 'px';
+                trail.style.background = getComputedStyle(this.element.querySelector('.fighter-body')).background;
+                document.getElementById('gameContainer').appendChild(trail);
+                setTimeout(() => trail.remove(), 300);
+            }
+
+            updateDashUI() {
+                const container = document.getElementById('p1DashCharges');
+                const charges = container.querySelectorAll('.dash-charge');
+                charges.forEach((charge, i) => charge.classList.toggle('used', i >= this.dashCharges));
+            }
+
+            checkDownslamOpportunity() {
+                const target = this.isPlayer ? player2 : player1;
+                if (target.hitstun > 0 && !target.isGrounded && !target.isAwakened) {
+                    this.canDownslam = true;
+                    if (this.isPlayer) document.getElementById('downslamPrompt').classList.remove('hidden');
+                } else {
+                    this.canDownslam = false;
+                    if (this.isPlayer) document.getElementById('downslamPrompt').classList.add('hidden');
+                }
+            }
+
+            updateAI() {
+                const target = player1;
+                const dist = Math.abs(target.x - this.x);
+                const charData = characters[this.type];
+                
+                if (this.hitstun > 0 || this.isAttacking) return;
+                
+                // Block if player attacking
+                if (target.isAttacking && dist < 150 && Math.random() < 0.3) {
+                    this.block(true);
+                    setTimeout(() => this.block(false), 500);
+                    return;
+                }
+                
+                // Dash cancel if hit and can
+                if (this.canDashCancel && Math.random() < 0.4) {
+                    this.performDashCancel();
+                    return;
+                }
+                
+                // Downslam opportunity
+                if (target.hitstun > 0 && !target.isGrounded && Math.random() < 0.3) {
+                    this.attack('downslam');
+                    return;
+                }
+                
+                // Dash to approach or retreat
+                if ((dist > 200 || (dist < 100 && this.health < 300)) && this.dashCharges > 1 && Math.random() < 0.1) {
+                    this.facing = dist > 200 ? (target.x > this.x ? 1 : -1) : (target.x > this.x ? -1 : 1);
+                    this.performDash();
+                    return;
+                }
+                
+                // Move and attack
+                if (dist > 100) {
+                    this.vx = (target.x > this.x ? 1 : -1) * charData.speed * 0.8;
+                } else {
+                    this.vx *= 0.5;
+                    if (Math.random() < 0.05) {
+                        const moves = ['light', 'heavy', 'special'];
+                        this.attack(moves[Math.floor(Math.random() * moves.length)]);
+                    }
+                }
+                
+                // Jump
+                if (this.isGrounded && Math.random() < 0.02) {
+                    this.vy = -charData.jump;
+                    this.isGrounded = false;
+                }
+                
+                // Ultimate when awakened
+                if (this.isAwakened && dist < 200 && Math.random() < 0.01) {
